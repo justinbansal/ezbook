@@ -9,7 +9,8 @@ const rawEvents = [
     host: 'Sally',
     description: 'Drink, Eat, Bowl',
     people: ['Jane', 'Sally'],
-    total_spots: 5
+    total_spots: 5,
+    id: 1
   },
   {
     title: 'Biking',
@@ -21,7 +22,8 @@ const rawEvents = [
     host: 'Martin',
     description: 'Biking on the Caledon Trail',
     people: ['Martin'],
-    total_spots: 20
+    total_spots: 20,
+    id: 2,
   },
   {
     title: 'Bowling',
@@ -33,9 +35,10 @@ const rawEvents = [
     host: 'John',
     description: 'Drink, Eat, Bowl',
     people: ['John', 'Martin', 'Jane', 'Sally'],
-    total_spots: 4
+    total_spots: 4,
+    id: 3,
   },
-]
+];
 
 function createEvent(options) {
   const {
@@ -48,7 +51,8 @@ function createEvent(options) {
     host,
     description,
     people,
-    total_spots
+    total_spots,
+    id,
   } = options;
 
   return {
@@ -63,9 +67,11 @@ function createEvent(options) {
     people,
     total_spots,
     status: people.length < total_spots ? 'open' : 'full',
-    id: Math.random().toString(36).substr(2, 9),
+    id,
   }
 }
+
+let events;
 
 function renderEvent(container, event) {
   const link = document.createElement('a');
@@ -83,30 +89,46 @@ function renderEvent(container, event) {
   container.appendChild(link);
 }
 
-function retrieveEventData(eventId) {
-  const eventData = rawEvents.find(event => event.id === eventId);
-
+function retrieveEventData(eventId, events) {
+  const eventData = events.find(event => event.id === eventId);
   return eventData;
 }
 
-if (rawEvents.length > 0) {
-  const events = rawEvents.map(createEvent);
-  console.log(events);
-
-  const container = document.getElementById('main');
-  events.forEach(event => renderEvent(container, event));
-
-  const eventLinks = container.querySelectorAll('.event a');
-  eventLinks.forEach(link => {
-    link.addEventListener('click', handleEventClick);
-  });
+function displayEventDetails(eventData) {
+  const eventDetailsElement = document.getElementById('event-details');
+  eventDetailsElement.innerHTML = `
+    <h2>${eventData.title}</h2>
+    <p>${eventData.description}</p>
+    <p>${eventData.date} ${eventData.time}</p>
+    <p>${eventData.location}</p>
+  `;
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+  const currentPage = window.location.pathname.split('/').pop();
+  events = rawEvents.map(createEvent);
+
+  if (currentPage == 'index.html') {
+    const container = document.getElementById('main');
+    events.forEach(event => renderEvent(container, event));
+
+    const eventLinks = container.querySelectorAll('.event a');
+    eventLinks.forEach(link => {
+      link.addEventListener('click', handleEventClick);
+    });
+  }
+
+  if (currentPage === 'event.html') {
+    const eventId = parseInt(new URLSearchParams(window.location.search).get('id'), 10);
+    const eventData = retrieveEventData(eventId, events);
+    displayEventDetails(eventData);
+  }
+});
 
 function handleEventClick(event) {
   event.preventDefault();
 
-  const eventId = event.target.href.split('?id=')[1];
-  const eventData = retrieveEventData(eventId);
+  const eventId = event.target.getAttribute('href').split('?id=')[1];
 
   window.location.href = `event.html?id=${eventId}`;
 }
