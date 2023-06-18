@@ -1,3 +1,17 @@
+// Firebase
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDHqeCL5yWiUGnAqr_KA7_ho2KJuiUwUb4",
+  authDomain: "ezbook-cf3d9.firebaseapp.com",
+  projectId: "ezbook-cf3d9",
+  storageBucket: "ezbook-cf3d9.appspot.com",
+  messagingSenderId: "298078561094",
+  appId: "1:298078561094:web:08135bc3a332d26ff4fb47",
+  measurementId: "G-F529Z6XKQD"
+}
+
+firebase.initializeApp(firebaseConfig);
+
 const rawEvents = [
   {
     title: 'Movies',
@@ -7,7 +21,7 @@ const rawEvents = [
     cost: 20,
     tags: ['chill'],
     host: 'Sally',
-    description: 'Drink, Eat, Bowl',
+    description: 'Popcorn and a movie with friends',
     people: ['Jane', 'Sally'],
     total_spots: 5,
     id: 1
@@ -54,6 +68,22 @@ function createEvent(options) {
     total_spots,
     id,
   } = options;
+
+  const eventsRef = firebase.database().ref('events');
+  eventsRef.child(id).set({
+    title,
+    location,
+    date,
+    time,
+    cost,
+    tags,
+    host,
+    description,
+    people,
+    total_spots,
+    id,
+    status: people.length < total_spots ? 'open' : 'full',
+  });
 
   return {
     title,
