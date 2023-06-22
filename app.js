@@ -1,3 +1,35 @@
+// Firebase
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDHqeCL5yWiUGnAqr_KA7_ho2KJuiUwUb4",
+  authDomain: "ezbook-cf3d9.firebaseapp.com",
+  projectId: "ezbook-cf3d9",
+  storageBucket: "ezbook-cf3d9.appspot.com",
+  messagingSenderId: "298078561094",
+  appId: "1:298078561094:web:08135bc3a332d26ff4fb47",
+  measurementId: "G-F529Z6XKQD"
+}
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+
+function initializeRecaptchaVerifier() {
+  const recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+    'size': 'invisible',
+    'callback': (response) => {
+      // reCAPTCHA solved, allow signInWithPhoneNumber.
+      // Code to execute when reCAPTCHA is solved
+
+      submitLoginForm();
+    }
+  });
+
+  return recaptchaVerifier;
+}
+
+let globalConfirmationResult;
+
 const rawEvents = [
   {
     title: 'Movies',
@@ -7,7 +39,7 @@ const rawEvents = [
     cost: 20,
     tags: ['chill'],
     host: 'Sally',
-    description: 'Drink, Eat, Bowl',
+    description: 'Popcorn and a movie with friends',
     people: ['Jane', 'Sally'],
     total_spots: 5,
     id: 1
@@ -40,6 +72,36 @@ const rawEvents = [
   },
 ];
 
+function submitLoginForm() {
+  const phoneNumber = document.getElementById('phone-number').value;
+  login(phoneNumber)
+  .then(function() {
+    window.location.href = 'index.html';
+  })
+  .catch(function(error) {
+    console.log(error);
+  });
+}
+
+function login(phoneNumber) {
+  return new Promise(function(resolve, reject) {
+    const recaptchaVerifier = initializeRecaptchaVerifier();
+    firebase.auth().signInWithPhoneNumber(phoneNumber, recaptchaVerifier)
+      .then(function(confirmationResult) {
+        globalConfirmationResult = confirmationResult;
+
+        const verificationCode = prompt('Please enter the verification code');
+        return confirmationResult.confirm(verificationCode);
+      })
+      .then(function(result) {
+        resolve(result);
+      }).catch(function(error) {
+        reject(error);
+      }
+    );
+  });
+}
+
 function createEvent(options) {
   const {
     title,
@@ -54,6 +116,22 @@ function createEvent(options) {
     total_spots,
     id,
   } = options;
+
+  const eventsRef = firebase.database().ref('events');
+  eventsRef.child(id).set({
+    title,
+    location,
+    date,
+    time,
+    cost,
+    tags,
+    host,
+    description,
+    people,
+    total_spots,
+    id,
+    status: people.length < total_spots ? 'open' : 'full',
+  });
 
   return {
     title,
@@ -108,6 +186,14 @@ document.addEventListener('DOMContentLoaded', function() {
   const currentPage = window.location.pathname.split('/').pop();
   events = rawEvents.map(createEvent);
 
+  firebase.auth().onAuthStateChanged(user => {
+    if (user) {
+      console.log('User is signed in.');
+    } else {
+      console.log('No user is signed in.');
+    }
+  });
+
   if (currentPage == 'index.html') {
     const container = document.getElementById('main');
     events.forEach(event => renderEvent(container, event));
@@ -132,3 +218,9 @@ function handleEventClick(event) {
 
   window.location.href = `event.html?id=${eventId}`;
 }
+
+document.getElementById('login-form').addEventListener('submit', function(event) {
+  event.preventDefault();
+
+  submitLoginForm();
+});
