@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EZBOOK</title>
+  <title>Create Event</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -18,15 +18,32 @@
     <a href="create.html" data-create-button>Create Event</a>
   </nav>
 
-  <div id="main">
-    <!-- List of events -->
-  </div>
+  <form class="create-event-form">
+    <label for="event-name">Name</label>
+    <input type="text" id="event-name" name="name" required>
+
+    <label for="event-location">Location</label>
+    <input type="text" id="event-location" name="location" required>
+
+    <label for="event-date">Date</label>
+    <input type="text" id="event-date" name="date" required>
+
+    <label for="event-time">Time</label>
+    <input type="text" id="event-time" name="time" required>
+
+    <label for="event-cost">Cost</label>
+    <input type="text" id="event-cost" name="cost" required>
+
+    <label for="event-limit">Limit</label>
+    <input type="text" id="event-limit" name="limit" required>
+
+    <button type="submit">Create</button>
+  </form>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <script src="app.js"></script>
-
 </body>
 
 </html>
