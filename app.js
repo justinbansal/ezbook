@@ -30,52 +30,11 @@ function initializeRecaptchaVerifier() {
 
 let globalConfirmationResult;
 
-const rawEvents = [
-  {
-    title: 'Movies',
-    location: 'VIP Cineplex',
-    date: '29/06/23',
-    time: '8-10pm',
-    cost: 20,
-    tags: ['chill'],
-    host: 'Sally',
-    description: 'Popcorn and a movie with friends',
-    people: ['Jane', 'Sally'],
-    total_spots: 5,
-    id: 1
-  },
-  {
-    title: 'Biking',
-    location: 'Caledon',
-    date: '1/07/23',
-    time: '8-10am',
-    cost: 0,
-    tags: ['active', 'social'],
-    host: 'Martin',
-    description: 'Biking on the Caledon Trail',
-    people: ['Martin'],
-    total_spots: 20,
-    id: 2,
-  },
-  {
-    title: 'Bowling',
-    location: 'Yorkdale',
-    date: '20/06/23',
-    time: '7-9pm',
-    cost: 25,
-    tags: ['active', 'social'],
-    host: 'John',
-    description: 'Drink, Eat, Bowl',
-    people: ['John', 'Martin', 'Jane', 'Sally'],
-    total_spots: 4,
-    id: 3,
-  },
-];
-
 function submitLoginForm() {
   const phoneNumber = document.getElementById('phone-number').value;
   login(phoneNumber)
-  .then(function() {
+  .then(function(data) {
+    console.log(data);
     window.location.href = 'index.html';
   })
   .catch(function(error) {
@@ -83,7 +42,7 @@ function submitLoginForm() {
   });
 }
 
-function login(phoneNumber) {
+function login(phoneNumber, displayName) {
   return new Promise(function(resolve, reject) {
     const recaptchaVerifier = initializeRecaptchaVerifier();
     firebase.auth().signInWithPhoneNumber(phoneNumber, recaptchaVerifier)
@@ -102,55 +61,6 @@ function login(phoneNumber) {
   });
 }
 
-function createEvent(options) {
-  const {
-    title,
-    location,
-    date,
-    time,
-    cost,
-    tags,
-    host,
-    description,
-    people,
-    total_spots,
-    id,
-  } = options;
-
-  const eventsRef = firebase.database().ref('events');
-  eventsRef.child(id).set({
-    title,
-    location,
-    date,
-    time,
-    cost,
-    tags,
-    host,
-    description,
-    people,
-    total_spots,
-    id,
-    status: people.length < total_spots ? 'open' : 'full',
-  });
-
-  return {
-    title,
-    location,
-    date,
-    time,
-    cost,
-    tags,
-    host,
-    description,
-    people,
-    total_spots,
-    status: people.length < total_spots ? 'open' : 'full',
-    id,
-  }
-}
-
-let events;
-
 function renderEvent(container, event) {
   const link = document.createElement('a');
   link.href = `event.html?id=${event.id}`;
@@ -158,13 +68,15 @@ function renderEvent(container, event) {
   const div = document.createElement('div');
   div.classList.add('event');
   div.innerHTML = `
-    <h2>${event.title}</h2>
-    <p>${event.description}</p>
+    <h2>${event.name}</h2>
+    <p>${event.cost}</p>
+    <p>${event.limit}</p>
     <p>${event.date} ${event.time}</p>
     <p>${event.location}</p>
+    <button id="${event.id}" data-join-event>Join</button>
   `;
-  link.appendChild(div);
-  container.appendChild(link);
+  // link.appendChild(div);
+  container.appendChild(div);
 }
 
 function retrieveEventData(eventId, events) {
@@ -183,20 +95,64 @@ function displayEventDetails(eventData) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  const currentPage = window.location.pathname.split('/').pop();
-  events = rawEvents.map(createEvent);
+  const currentPage = window.location.pathname;
 
-  firebase.auth().onAuthStateChanged(user => {
-    if (user) {
-      console.log('User is signed in.');
-    } else {
-      console.log('No user is signed in.');
+  let events;
+
+  const eventsRef = firebase.database().ref('events');
+  eventsRef.once('value')
+  .then(function(snapshot) {
+
+    const eventsData = snapshot.val();
+
+    if (!eventsData) return;
+
+    events = Object.keys(eventsData).map(key => {
+      return {
+        id: key,
+        ...eventsData[key]
+      }
+    });
+
+
+    if (currentPage == '/') {
+      const container = document.getElementById('main');
+
+      for (data in events) {
+        renderEvent(container, events[data]);
+      }
     }
+
+    const joinEventButtons = document.querySelectorAll('[data-join-event]');
+    console.log(joinEventButtons);
+    joinEventButtons.forEach(button => {
+      button.addEventListener('click', function(event) {
+        event.preventDefault();
+
+        const eventId = event.target.getAttribute('id');
+
+        const user = firebase.auth().currentUser;
+        const usersRef = firebase.database().ref('users');
+        usersRef.child(user.uid).child('events').child(eventId).set(true)
+        .then(() => {
+          console.log('User event saved to database');
+        })
+        .catch(function(error) {
+          console.log(error);
+        });
+      })
+    });
+  })
+  .catch(function(error) {
+    console.log(error);
   });
 
-  if (currentPage == 'index.html') {
+  if (currentPage == '/') {
     const container = document.getElementById('main');
-    events.forEach(event => renderEvent(container, event));
+
+    for (data in events) {
+      renderEvent(container, events[data]);
+    }
 
     const eventLinks = container.querySelectorAll('.event a');
     eventLinks.forEach(link => {
@@ -219,8 +175,130 @@ function handleEventClick(event) {
   window.location.href = `event.html?id=${eventId}`;
 }
 
-document.getElementById('login-form').addEventListener('submit', function(event) {
+const logoutButton = document.querySelector('[data-logout-button]');
+const registerForm = document.querySelector('.register-form');
+const loginForm = document.querySelector('.login-form');
+const createButton = document.querySelector('[data-create-button]');
+const createEventForm = document.querySelector('.create-event-form');
+
+
+logoutButton.addEventListener('click', function(event) {
   event.preventDefault();
 
-  submitLoginForm();
+  firebase.auth().signOut().then(function() {
+    console.log('Signed Out');
+    window.location.href = 'index.html';
+  }, function(error) {
+    console.error('Sign Out Error', error);
+  });
 });
+
+// Check if user is logged in
+
+firebase.auth().onAuthStateChanged(function(user) {
+  if (user) {
+    console.log('User is signed in.');
+
+    // Retrieve the user data from the database
+    const usersRef = firebase.database().ref('users');
+    usersRef.child(user.uid).once('value')
+    .then(function(snapshot) {
+      const isAdmin = snapshot.val().isAdmin;
+
+      if (isAdmin) {
+        console.log('Current user is an admin');
+
+        if (createButton) {
+          createButton.style.display = 'block';
+        }
+      } else {
+        console.log('Current user is not an admin');
+      }
+    })
+    .catch(function(error) {
+      console.log(error);
+    });
+
+    // show logout button
+    if (logoutButton) {
+      logoutButton.style.display = 'block';
+    }
+  } else {
+    console.log('No user is signed in.');
+  }
+});
+
+// Login
+if (loginForm) {
+  loginForm.addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    submitLoginForm();
+  });
+}
+
+// Register
+if (registerForm) {
+  registerForm.addEventListener('submit', function(event) {
+    event.preventDefault();
+
+    const phoneNumber = document.getElementById('phone-number').value;
+    const displayName = document.getElementById('name').value;
+
+    login(phoneNumber, displayName)
+    .then(function(data) {
+
+      // Save name to database
+      const user = firebase.auth().currentUser;
+      const usersRef = firebase.database().ref('users');
+      usersRef.child(user.uid).set({
+        displayName,
+        phoneNumber,
+      })
+      .then(() => {
+        console.log('User saved to database');
+        window.location.href = 'index.html';
+      })
+    })
+    .catch(function(error) {
+      console.log(error);
+    });
+  });
+}
+
+// Create event
+if (createEventForm) {
+  createEventForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    // Get form data
+    const formData = new FormData(createEventForm);
+    const name = formData.get('name');
+    const location = formData.get('location');
+    const date = formData.get('date');
+    const time = formData.get('time');
+    const cost = formData.get('cost');
+    const limit = formData.get('limit');
+
+    // Create event object
+    let event = {
+      name,
+      location,
+      date,
+      time,
+      cost,
+      limit,
+    };
+
+    const eventRef = firebase.database().ref('events').push(); // Generate a unique key for the event
+
+    eventRef.set(event);
+
+    event = {
+      id: eventRef.key,
+      ...event,
+    };
+
+    window.location.href = '/';
+  });
+}
