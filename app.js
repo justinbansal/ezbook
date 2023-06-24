@@ -61,19 +61,29 @@ function login(phoneNumber, displayName) {
   });
 }
 
-function renderEvent(container, event) {
+function renderEvent(container, event, currentPage) {
   const link = document.createElement('a');
   link.href = `event.html?id=${event.id}`;
 
   const div = document.createElement('div');
   div.classList.add('event');
+
+  let hosted = false;
+  if (event.hostId === currentUser.uid) {
+    hosted = true;
+  }
   div.innerHTML = `
-    <h2>${event.name}</h2>
-    <p>${event.cost}</p>
-    <p>${event.limit}</p>
-    <p>${event.date} ${event.time}</p>
-    <p>${event.location}</p>
-    <button id="${event.id}" data-join-event>Join</button>
+    <div className="title">
+      <h3>${event.name.toUpperCase()}</h3>
+    </div>
+
+    <p>Cost: ${event.cost}</p>
+    <p>Limit: ${event.limit}</p>
+    <p>${event.date.toUpperCase()} ${event.time.toUpperCase()}</p>
+    <p>IN ${event.location.toUpperCase()}</p>
+    ${currentPage != '/user.html' ? `<button class="join-btn" id="${event.id}" data-join-event>Join</button>` : ''}
+    ${currentPage === '/user.html' ? `<button class="delete-btn" id="${event.id}" data-delete-event>Remove RSVP</button>` : ''}
+    ${hosted ? '<button class="host-badge">HOST</button>' : ''}
   `;
   // link.appendChild(div);
   container.appendChild(div);
@@ -95,6 +105,33 @@ function displayEventDetails(eventData) {
 }
 
 let currentUser;
+
+const currentPage = window.location.pathname;
+
+// let events;
+
+// const eventsRef = firebase.database().ref('events');
+// eventsRef.once('value')
+// .then(function(snapshot) {
+
+//   const eventsData = snapshot.val();
+
+//   if (!eventsData) return;
+
+//   events = Object.keys(eventsData).map(key => {
+//     return {
+//       id: key,
+//       ...eventsData[key]
+//     }
+//   });
+
+//   if (currentPage == '/') {
+//     const container = document.getElementById('main');
+
+//     for (data in events) {
+//       renderEvent(container, events[data]);
+//     }
+//   }
 
 document.addEventListener('DOMContentLoaded', function() {
   firebase.auth().onAuthStateChanged(function(user) {
@@ -121,6 +158,8 @@ document.addEventListener('DOMContentLoaded', function() {
           .then(function(snapshot) {
             const eventsData = snapshot.val();
 
+            if (!eventsData) return;
+
             const userEvents = userData.events;
             const events = Object.keys(eventsData).map(key => {
               return {
@@ -136,10 +175,80 @@ document.addEventListener('DOMContentLoaded', function() {
             const container = document.querySelector('[data-user-events-list]');
 
             for (data in userEventsData) {
-              renderEvent(container, userEventsData[data]);
+              renderEvent(container, userEventsData[data], currentPage);
             }
+
+            const removeRSVPButtons = document.querySelectorAll('[data-delete-event]');
+            removeRSVPButtons.forEach(button => {
+              button.addEventListener('click', function(event) {
+                event.preventDefault();
+
+                console.log('Remove RSVP button clicked');
+
+                const eventId = event.target.getAttribute('id');
+
+                const user = firebase.auth().currentUser;
+                const usersRef = firebase.database().ref('users');
+                usersRef.child(user.uid).child('events').child(eventId).remove()
+                .then(() => {
+                  console.log('User event removed from database');
+
+                  // Remove user from event
+                  const eventsRef = firebase.database().ref('events');
+                  eventsRef.child(eventId).child('users').child(user.uid).remove()
+                  .then(() => {
+                    console.log('User removed from event');
+                    window.location.reload();
+                  })
+                })
+                .catch(function(error) {
+                  console.log(error);
+                });
+              })
+            });
           })
         })
+      }
+
+      if (currentPage === '/create.html') {
+
+        // Create event
+        if (createEventForm) {
+          createEventForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Get form data
+            const formData = new FormData(createEventForm);
+            const name = formData.get('name');
+            const location = formData.get('location');
+            const date = formData.get('date');
+            const time = formData.get('time');
+            const cost = formData.get('cost');
+            const limit = formData.get('limit');
+
+            // Create event object
+            let event = {
+              name,
+              location,
+              date,
+              time,
+              cost,
+              limit,
+              hostId: currentUser.uid,
+            };
+
+            const eventRef = firebase.database().ref('events').push(); // Generate a unique key for the event
+
+            eventRef.set(event);
+
+            event = {
+              id: eventRef.key,
+              ...event,
+            };
+
+            window.location.href = '/';
+          });
+        }
       }
 
       // Retrieve the user data from the database
@@ -166,75 +275,50 @@ document.addEventListener('DOMContentLoaded', function() {
       if (logoutButton) {
         logoutButton.style.display = 'block';
       }
+
+      // Hide login button
+      if (loginButton) {
+        loginButton.style.display = 'none';
+      }
+
+      // Hide signup button
+      if (registerButton) {
+        registerButton.style.display = 'none';
+      }
     } else {
       currentUser = null;
       console.log('No user is signed in.');
     }
   });
 
-  const currentPage = window.location.pathname;
+  const joinEventButtons = document.querySelectorAll('[data-join-event]');
+  joinEventButtons.forEach(button => {
+    button.addEventListener('click', function(event) {
+      event.preventDefault();
 
-  let events;
+      const eventId = event.target.getAttribute('id');
 
-  const eventsRef = firebase.database().ref('events');
-  eventsRef.once('value')
-  .then(function(snapshot) {
+      const user = firebase.auth().currentUser;
+      const usersRef = firebase.database().ref('users');
+      usersRef.child(user.uid).child('events').child(eventId).set(true)
+      .then(() => {
+        console.log('User event saved to database');
 
-    const eventsData = snapshot.val();
-
-    if (!eventsData) return;
-
-    events = Object.keys(eventsData).map(key => {
-      return {
-        id: key,
-        ...eventsData[key]
-      }
-    });
-
-
-    if (currentPage == '/') {
-      const container = document.getElementById('main');
-
-      for (data in events) {
-        renderEvent(container, events[data]);
-      }
-    }
-
-    const joinEventButtons = document.querySelectorAll('[data-join-event]');
-    joinEventButtons.forEach(button => {
-      button.addEventListener('click', function(event) {
-        event.preventDefault();
-
-        const eventId = event.target.getAttribute('id');
-
-        const user = firebase.auth().currentUser;
-        const usersRef = firebase.database().ref('users');
-        usersRef.child(user.uid).child('events').child(eventId).set(true)
+        // Add user to event
+        const eventRef = firebase.database().ref('events');
+        eventRef.child(eventId).child('users').child(user.uid).set(true)
         .then(() => {
-          console.log('User event saved to database');
+          console.log('User added to event');
         })
         .catch(function(error) {
           console.log(error);
         });
       })
-    });
-  })
-  .catch(function(error) {
-    console.log(error);
+      .catch(function(error) {
+        console.log(error);
+      });
+    })
   });
-
-  if (currentPage == '/') {
-    const container = document.getElementById('main');
-
-    for (data in events) {
-      renderEvent(container, events[data]);
-    }
-
-    const eventLinks = container.querySelectorAll('.event a');
-    eventLinks.forEach(link => {
-      link.addEventListener('click', handleEventClick);
-    });
-  }
 
   if (currentPage === '/event.html') {
     const eventId = parseInt(new URLSearchParams(window.location.search).get('id'), 10);
@@ -284,6 +368,8 @@ const registerForm = document.querySelector('.register-form');
 const loginForm = document.querySelector('.login-form');
 const createButton = document.querySelector('[data-create-button]');
 const createEventForm = document.querySelector('.create-event-form');
+const loginButton = document.querySelector('[data-login-button]');
+const registerButton = document.querySelector('[data-register-button]');
 
 
 logoutButton.addEventListener('click', function(event) {
@@ -332,42 +418,5 @@ if (registerForm) {
     .catch(function(error) {
       console.log(error);
     });
-  });
-}
-
-// Create event
-if (createEventForm) {
-  createEventForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-
-    // Get form data
-    const formData = new FormData(createEventForm);
-    const name = formData.get('name');
-    const location = formData.get('location');
-    const date = formData.get('date');
-    const time = formData.get('time');
-    const cost = formData.get('cost');
-    const limit = formData.get('limit');
-
-    // Create event object
-    let event = {
-      name,
-      location,
-      date,
-      time,
-      cost,
-      limit,
-    };
-
-    const eventRef = firebase.database().ref('events').push(); // Generate a unique key for the event
-
-    eventRef.set(event);
-
-    event = {
-      id: eventRef.key,
-      ...event,
-    };
-
-    window.location.href = '/';
   });
 }

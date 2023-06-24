@@ -12,19 +12,21 @@
 <body>
 
   <nav>
-    <a href="login.html">Login Page</a>
-    <a href="register.html">Register Page</a>
+    <a href="/">Home Page</a>
+    <a href="login.html" data-login-button>Login Page</a>
+    <a href="register.html" data-register-button>Register Page</a>
+    <a href="user.html" data-user-page-button>User Page</a>
     <a href="logout.html" data-logout-button>Logout</a>
     <a href="create.html" data-create-button>Create Event</a>
   </nav>
 
-  <div id="user">
+  <div id="user" class="user-details">
 
   </div>
 
   <div class="user-events">
-    <h2>My Events</h2>
-    <ul class="user-events-list" data-user-events-list></ul>
+    <h2 class="user-heading">My Events</h2>
+    <div class="user-events-list" data-user-events-list></div>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
