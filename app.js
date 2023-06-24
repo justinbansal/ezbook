@@ -1,13 +1,13 @@
 // Firebase
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDHqeCL5yWiUGnAqr_KA7_ho2KJuiUwUb4",
-  authDomain: "ezbook-cf3d9.firebaseapp.com",
-  projectId: "ezbook-cf3d9",
-  storageBucket: "ezbook-cf3d9.appspot.com",
-  messagingSenderId: "298078561094",
-  appId: "1:298078561094:web:08135bc3a332d26ff4fb47",
-  measurementId: "G-F529Z6XKQD"
+  apiKey: process.env.API_KEY,
+  authDomain: process.env.AUTH_DOMAIN,
+  projectId: process.env.PROJECT_ID,
+  storageBucket: process.env.STORAGE_BUCKET,
+  messagingSenderId: process.env.MESSAGING_SENDER_ID,
+  appId: process.env.APP_ID,
+  measurementId: process.env.MEASUREMENT_ID,
 }
 
 firebase.initializeApp(firebaseConfig);
