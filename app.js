@@ -98,6 +98,8 @@ async function checkUser() {
 }
 
 function renderEventsToPage(event) {
+  const currentPage = window.location.pathname;
+
   const eventWrapper = document.createElement('div');
   eventWrapper.classList.add('event');
 
@@ -116,10 +118,30 @@ function renderEventsToPage(event) {
   container.appendChild(eventWrapper);
 }
 
-function displayEvents(events) {
-  // Display events on the page
-  // Don't display events that the user has already joined
+function displayUserEvents(events) {
+  const eventsUserHasJoined = events.filter(event => {
+    if (currentUser && event.users) {
+      event.users = Object.keys(event.users).map(key => ({
+          id: key,
+          ...event.users[key]
+        }));
+      return event.users.some(user => user.id === currentUser.uid)
+    }
 
+    // If event has no users, return false
+    // because the user has not joined
+    if (!event.users) {
+      return false;
+    }
+  });
+
+  eventsUserHasJoined.forEach(event => {
+    // Render event to page
+    renderEventsToPage(event);
+  });
+}
+
+function displayOtherEvents(events) {
   const eventsUserHasNotJoined = events.filter(event => {
     if (currentUser && event.users) {
       event.users = Object.keys(event.users).map(key => ({
@@ -142,6 +164,42 @@ function displayEvents(events) {
   });
 }
 
+function displayEvents(events) {
+  // Display events on the page
+
+  const currentPage = window.location.pathname;
+
+  if (currentPage === '/user.html') {
+    displayUserEvents(events);
+    setupButtonListeners(events);
+  } else {
+    displayOtherEvents(events);
+    setupButtonListeners(events);
+  }
+}
+
+function setupButtonListeners(events) {
+  // Add event listeners to buttons
+  const joinEventButtons = document.querySelectorAll('[data-join-event]');
+
+  // When user clicks join button, add event to user's events
+  // and add user to event's users
+
+  // Make these changes with local data first
+  // then make changes to database
+
+  joinEventButtons.forEach(button => {
+    button.addEventListener('click', event => {
+      event.preventDefault();
+
+      // Add event to user's events
+      // Find event in events array
+      const eventToJoin = events.find(event => event.id === button.id);
+      console.log(eventToJoin);
+    })
+  });
+}
+
 async function loadApp() {
   let events = [];
   let currentUser;
@@ -152,8 +210,6 @@ async function loadApp() {
   // Retrieve current user from Firebase
   // Store current user in currentUser variable
   currentUser = await checkUser();
-
-  console.log(currentUser);
 
   // If there are events, store them in the events variable
   if (pulledEvents) {
@@ -170,6 +226,8 @@ async function loadApp() {
     const container = document.getElementById('main');
     container.innerHTML = '<p>No events to show</p>';
   }
+
+
 }
 
 loadApp();
@@ -260,7 +318,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(function(snapshot) {
           const userData = snapshot.val();
 
-          const userElement = document.getElementById('user');
+          const userElement = document.querySelector('.user-details');
           userElement.innerHTML = `
             <h2>${userData.displayName}</h2>
             <p>${userData.phoneNumber}</p>
