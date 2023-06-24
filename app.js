@@ -1,5 +1,5 @@
-// Firebase
-
+// Firebase initialization
+// TODO: Sensitive information should be stored in a .env file and accessed through process.env
 const firebaseConfig = {
   apiKey: "AIzaSyDHqeCL5yWiUGnAqr_KA7_ho2KJuiUwUb4",
   authDomain: "ezbook-cf3d9.firebaseapp.com",
@@ -12,15 +12,11 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 
-const auth = firebase.auth();
-
+// Firebase Recaptcha initialization
 function initializeRecaptchaVerifier() {
   const recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
     'size': 'invisible',
-    'callback': (response) => {
-      // reCAPTCHA solved, allow signInWithPhoneNumber.
-      // Code to execute when reCAPTCHA is solved
-
+    'callback': () => {
       submitLoginForm();
     }
   });
@@ -28,38 +24,155 @@ function initializeRecaptchaVerifier() {
   return recaptchaVerifier;
 }
 
+// Global variables
 let globalConfirmationResult;
 
-function submitLoginForm() {
+// Submits login form and calls login function with phone number
+async function submitLoginForm() {
   const phoneNumber = document.getElementById('phone-number').value;
-  login(phoneNumber)
-  .then(function(data) {
-    console.log(data);
+
+  try {
+    await login(phoneNumber);
     window.location.href = '/';
-  })
-  .catch(function(error) {
+  } catch (error) {
     console.log(error);
-  });
+  }
 }
 
-function login(phoneNumber, displayName) {
-  return new Promise(function(resolve, reject) {
+// Logs in user with phone number using Firebase Auth
+async function login(phoneNumber) {
+  try {
     const recaptchaVerifier = initializeRecaptchaVerifier();
-    firebase.auth().signInWithPhoneNumber(phoneNumber, recaptchaVerifier)
-      .then(function(confirmationResult) {
-        globalConfirmationResult = confirmationResult;
 
-        const verificationCode = prompt('Please enter the verification code');
-        return confirmationResult.confirm(verificationCode);
-      })
-      .then(function(result) {
-        resolve(result);
-      }).catch(function(error) {
-        reject(error);
+    const confirmationResult = firebase.auth().signInWithPhoneNumber(phoneNumber, recaptchaVerifier);
+
+    globalConfirmationResult = confirmationResult;
+
+    const verificationCode = prompt('Please enter the verification code');
+
+    const result = await globalConfirmationResult.confirm(verificationCode);
+
+    return result;
+
+  } catch (error) {
+    throw(error);
+  }
+}
+
+// When app loads, let's retrieve all events from Firebase
+// and store them in a variable called events
+
+async function retrieveEvents() {
+  const eventsRef = firebase.database().ref('events');
+  if (!eventsRef) return null;
+
+  try {
+    const snapshot = await eventsRef.once('value');
+    const eventsData = snapshot.val();
+    if (!eventsData) return null;
+
+    // Events in DB are stored as an object, but we want an array
+    // so we can iterate over it
+    const events = Object.keys(eventsData).map(key => {
+      return {
+        id: key,
+        ...eventsData[key]
       }
-    );
+    });
+
+    return events;
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+async function checkUser() {
+  return new Promise ((resolve, reject) => {
+    const unsubscribe = firebase.auth().onAuthStateChanged(user => {
+      unsubscribe();
+      resolve(user);
+    }, error => {
+      reject(error);
+    });
   });
 }
+
+function renderEventsToPage(event) {
+  const eventWrapper = document.createElement('div');
+  eventWrapper.classList.add('event');
+
+  eventWrapper.innerHTML = `
+    <h3 class="title">${event.name.toUpperCase()}</h3>
+    <p>Cost: ${event.cost}</p>
+    <p>Limit: ${event.limit}</p>
+    <p>${event.date.toUpperCase()} ${event.time.toUpperCase()}</p>
+    <p>IN ${event.location.toUpperCase()}</p>
+    ${currentPage != '/user.html' ? `<button class="join-btn" id="${event.id}" data-join-event>Join</button>` : ''}
+    ${currentPage === '/user.html' ? `<button class="delete-btn" id="${event.id}" data-delete-event>Remove RSVP</button>` : ''}
+    ${event.hostId === currentUser.uid ? '<button class="host-badge">HOST</button>' : ''}
+  `;
+
+  const container = document.getElementById('main');
+  container.appendChild(eventWrapper);
+}
+
+function displayEvents(events) {
+  // Display events on the page
+  // Don't display events that the user has already joined
+
+  const eventsUserHasNotJoined = events.filter(event => {
+    if (currentUser && event.users) {
+      event.users = Object.keys(event.users).map(key => ({
+          id: key,
+          ...event.users[key]
+        }));
+      return !event.users.some(user => user.id === currentUser.uid)
+    }
+
+    // If event has no users, return true
+    // because the user has not joined
+    if (!event.users) {
+      return true;
+    }
+  })
+
+  eventsUserHasNotJoined.forEach(event => {
+    // Render event to page
+    renderEventsToPage(event);
+  });
+}
+
+async function loadApp() {
+  let events = [];
+  let currentUser;
+
+  // Retrieve events from Firebase
+  const pulledEvents = await retrieveEvents();
+
+  // Retrieve current user from Firebase
+  // Store current user in currentUser variable
+  currentUser = await checkUser();
+
+  console.log(currentUser);
+
+  // If there are events, store them in the events variable
+  if (pulledEvents) {
+    events = pulledEvents;
+  }
+
+  // If there are events, display them
+  if (events.length) {
+    displayEvents(events);
+  }
+
+  // If there are no events, display a message
+  if (!events.length) {
+    const container = document.getElementById('main');
+    container.innerHTML = '<p>No events to show</p>';
+  }
+}
+
+loadApp();
 
 function renderEvent(container, event, currentPage) {
   const link = document.createElement('a');
