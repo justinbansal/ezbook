@@ -35,7 +35,7 @@ function submitLoginForm() {
   login(phoneNumber)
   .then(function(data) {
     console.log(data);
-    window.location.href = 'index.html';
+    window.location.href = '/';
   })
   .catch(function(error) {
     console.log(error);
@@ -124,7 +124,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const joinEventButtons = document.querySelectorAll('[data-join-event]');
-    console.log(joinEventButtons);
     joinEventButtons.forEach(button => {
       button.addEventListener('click', function(event) {
         event.preventDefault();
@@ -160,10 +159,42 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  if (currentPage === 'event.html') {
+  if (currentPage === '/event.html') {
     const eventId = parseInt(new URLSearchParams(window.location.search).get('id'), 10);
     const eventData = retrieveEventData(eventId, events);
     displayEventDetails(eventData);
+  }
+
+  if (currentPage === '/user.html') {
+    console.log('user page');
+  }
+
+  const userPageButton = document.querySelector('[data-user-page-button]');
+
+  if (userPageButton) {
+    userPageButton.addEventListener('click', function(event) {
+      event.preventDefault();
+
+      // if user is logged in, redirect to user page
+      const user = firebase.auth().currentUser;
+      if (user) {
+        window.location.href = '/user.html';
+      } else {
+        window.localStorage.setItem('loginMessage', 'Please login to view your user page');
+        window.location.href = '/login.html';
+      }
+    });
+  }
+
+  if (currentPage === '/login.html') {
+    const messageDiv = document.querySelector('[data-message-output]');
+    const loginMessage = window.localStorage.getItem('loginMessage');
+
+    if (loginMessage && messageDiv) {
+      messageDiv.innerHTML = loginMessage;
+      // Clear the message from local storage to prevent it from persisting
+      window.localStorage.removeItem('loginMessage');
+    }
   }
 });
 
@@ -187,7 +218,7 @@ logoutButton.addEventListener('click', function(event) {
 
   firebase.auth().signOut().then(function() {
     console.log('Signed Out');
-    window.location.href = 'index.html';
+    window.location.href = '/';
   }, function(error) {
     console.error('Sign Out Error', error);
   });
@@ -257,7 +288,7 @@ if (registerForm) {
       })
       .then(() => {
         console.log('User saved to database');
-        window.location.href = 'index.html';
+        window.location.href = '/';
       })
     })
     .catch(function(error) {
