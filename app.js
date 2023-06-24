@@ -94,7 +94,84 @@ function displayEventDetails(eventData) {
   `;
 }
 
+let currentUser;
+
 document.addEventListener('DOMContentLoaded', function() {
+  firebase.auth().onAuthStateChanged(function(user) {
+    if (user) {
+      console.log('User is signed in.');
+      currentUser = user;
+
+      const currentPage = window.location.pathname;
+
+      if (currentPage === '/user.html') {
+        const userRef = firebase.database().ref('users');
+        userRef.child(user.uid).once('value')
+        .then(function(snapshot) {
+          const userData = snapshot.val();
+
+          const userElement = document.getElementById('user');
+          userElement.innerHTML = `
+            <h2>${userData.displayName}</h2>
+            <p>${userData.phoneNumber}</p>
+          `;
+
+          const eventsRef = firebase.database().ref('events');
+          eventsRef.once('value')
+          .then(function(snapshot) {
+            const eventsData = snapshot.val();
+
+            const userEvents = userData.events;
+            const events = Object.keys(eventsData).map(key => {
+              return {
+                id: key,
+                ...eventsData[key]
+              }
+            });
+
+            const userEventsData = events.filter(event => {
+              return userEvents[event.id];
+            });
+
+            const container = document.querySelector('[data-user-events-list]');
+
+            for (data in userEventsData) {
+              renderEvent(container, userEventsData[data]);
+            }
+          })
+        })
+      }
+
+      // Retrieve the user data from the database
+      const usersRef = firebase.database().ref('users');
+      usersRef.child(user.uid).once('value')
+      .then(function(snapshot) {
+        const isAdmin = snapshot.val().isAdmin;
+
+        if (isAdmin) {
+          console.log('Current user is an admin');
+
+          if (createButton) {
+            createButton.style.display = 'block';
+          }
+        } else {
+          console.log('Current user is not an admin');
+        }
+      })
+      .catch(function(error) {
+        console.log(error);
+      });
+
+      // show logout button
+      if (logoutButton) {
+        logoutButton.style.display = 'block';
+      }
+    } else {
+      currentUser = null;
+      console.log('No user is signed in.');
+    }
+  });
+
   const currentPage = window.location.pathname;
 
   let events;
@@ -165,10 +242,6 @@ document.addEventListener('DOMContentLoaded', function() {
     displayEventDetails(eventData);
   }
 
-  if (currentPage === '/user.html') {
-    console.log('user page');
-  }
-
   const userPageButton = document.querySelector('[data-user-page-button]');
 
   if (userPageButton) {
@@ -222,41 +295,6 @@ logoutButton.addEventListener('click', function(event) {
   }, function(error) {
     console.error('Sign Out Error', error);
   });
-});
-
-// Check if user is logged in
-
-firebase.auth().onAuthStateChanged(function(user) {
-  if (user) {
-    console.log('User is signed in.');
-
-    // Retrieve the user data from the database
-    const usersRef = firebase.database().ref('users');
-    usersRef.child(user.uid).once('value')
-    .then(function(snapshot) {
-      const isAdmin = snapshot.val().isAdmin;
-
-      if (isAdmin) {
-        console.log('Current user is an admin');
-
-        if (createButton) {
-          createButton.style.display = 'block';
-        }
-      } else {
-        console.log('Current user is not an admin');
-      }
-    })
-    .catch(function(error) {
-      console.log(error);
-    });
-
-    // show logout button
-    if (logoutButton) {
-      logoutButton.style.display = 'block';
-    }
-  } else {
-    console.log('No user is signed in.');
-  }
 });
 
 // Login
