@@ -171,11 +171,12 @@ function displayEvents(events) {
 
   if (currentPage === '/user.html') {
     displayUserEvents(events);
-    setupButtonListeners(events);
   } else {
     displayOtherEvents(events);
-    setupButtonListeners(events);
   }
+
+  // Add event listeners to buttons
+  setupButtonListeners(events);
 }
 
 function setupButtonListeners(events) {
@@ -192,17 +193,59 @@ function setupButtonListeners(events) {
     button.addEventListener('click', event => {
       event.preventDefault();
 
-      // Add event to user's events
-      // Find event in events array
       const eventToJoin = events.find(event => event.id === button.id);
-      console.log(eventToJoin);
+
+      if (!eventToJoin.users) {
+        eventToJoin.users = [];
+      }
+
+      events[events.indexOf(eventToJoin)].users.push(
+        {
+          id: currentUser.uid,
+          name: currentUser.displayName,
+          phoneNumber: currentUser.phoneNumber
+        }
+      );
+
+      // Find user in users array
+      const user = users.find(user => user.id === currentUser.uid);
+      if (!user.events) {
+        user.events = [];
+      }
+
+      user.events.push(
+        {
+          id: eventToJoin.id,
+          name: eventToJoin.name,
+        }
+      );
+
+      // Update database
+      updateDatabase(events, this.users);
     })
   });
+}
+
+async function updateDatabase(events, users) {
+  // Update database with new events and users
+  const eventsRef = firebase.database().ref('events');
+  const usersRef = firebase.database().ref('users');
+
+  try {
+    await eventsRef.set(events);
+    await usersRef.set(users);
+  }
+
+  catch (error) {
+    console.log(error);
+  }
 }
 
 async function loadApp() {
   let events = [];
   let currentUser;
+
+  this.users = [];
 
   // Retrieve events from Firebase
   const pulledEvents = await retrieveEvents();
@@ -227,7 +270,11 @@ async function loadApp() {
     container.innerHTML = '<p>No events to show</p>';
   }
 
-
+  this.users.push({
+    id: currentUser.uid,
+    name: currentUser.displayName,
+    phoneNumber: currentUser.phoneNumber
+  });
 }
 
 loadApp();
@@ -278,31 +325,6 @@ function displayEventDetails(eventData) {
 let currentUser;
 
 const currentPage = window.location.pathname;
-
-// let events;
-
-// const eventsRef = firebase.database().ref('events');
-// eventsRef.once('value')
-// .then(function(snapshot) {
-
-//   const eventsData = snapshot.val();
-
-//   if (!eventsData) return;
-
-//   events = Object.keys(eventsData).map(key => {
-//     return {
-//       id: key,
-//       ...eventsData[key]
-//     }
-//   });
-
-//   if (currentPage == '/') {
-//     const container = document.getElementById('main');
-
-//     for (data in events) {
-//       renderEvent(container, events[data]);
-//     }
-//   }
 
 document.addEventListener('DOMContentLoaded', function() {
   firebase.auth().onAuthStateChanged(function(user) {
@@ -460,35 +482,6 @@ document.addEventListener('DOMContentLoaded', function() {
       currentUser = null;
       console.log('No user is signed in.');
     }
-  });
-
-  const joinEventButtons = document.querySelectorAll('[data-join-event]');
-  joinEventButtons.forEach(button => {
-    button.addEventListener('click', function(event) {
-      event.preventDefault();
-
-      const eventId = event.target.getAttribute('id');
-
-      const user = firebase.auth().currentUser;
-      const usersRef = firebase.database().ref('users');
-      usersRef.child(user.uid).child('events').child(eventId).set(true)
-      .then(() => {
-        console.log('User event saved to database');
-
-        // Add user to event
-        const eventRef = firebase.database().ref('events');
-        eventRef.child(eventId).child('users').child(user.uid).set(true)
-        .then(() => {
-          console.log('User added to event');
-        })
-        .catch(function(error) {
-          console.log(error);
-        });
-      })
-      .catch(function(error) {
-        console.log(error);
-      });
-    })
   });
 
   if (currentPage === '/event.html') {
