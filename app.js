@@ -86,6 +86,21 @@ async function retrieveEvents() {
   }
 }
 
+async function retrieveUsers() {
+  const usersRef = firebase.database().ref('users');
+  if (!usersRef) return null;
+
+  try {
+    const snapshot = await usersRef.once('value');
+    const usersData = snapshot.val();
+    if (!usersData) return null;
+
+    return usersData;
+  } catch (error) {
+    console.log(error);
+  }
+}
+
 async function checkUser() {
   return new Promise ((resolve, reject) => {
     const unsubscribe = firebase.auth().onAuthStateChanged(user => {
@@ -250,6 +265,9 @@ async function loadApp() {
   // Retrieve events from Firebase
   const pulledEvents = await retrieveEvents();
 
+  // Retrieve users from Firebase
+  const pulledUsers = await retrieveUsers();
+
   // Retrieve current user from Firebase
   // Store current user in currentUser variable
   currentUser = await checkUser();
@@ -270,11 +288,29 @@ async function loadApp() {
     container.innerHTML = '<p>No events to show</p>';
   }
 
-  this.users.push({
-    id: currentUser.uid,
-    name: currentUser.displayName,
-    phoneNumber: currentUser.phoneNumber
-  });
+  // If there are users, store them in the users variable
+  if (pulledUsers) {
+    this.users = pulledUsers;
+  }
+
+  // Does user exist in users array?
+  // If not, add user to users array
+  if (!this.users.some(user => user.id === currentUser.uid)) {
+    this.users.push({
+      id: currentUser.uid,
+      name: currentUser.displayName,
+      phoneNumber: currentUser.phoneNumber
+    });
+  }
+
+  // TODO: Update database with new users array
+
+  const currentPage = window.location.pathname;
+
+  if (currentPage === '/user.html') {
+    loadUserPageDetails(currentUser);
+    updateHeaderNav(currentUser);
+  }
 }
 
 loadApp();
@@ -334,75 +370,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
       const currentPage = window.location.pathname;
 
-      if (currentPage === '/user.html') {
-        const userRef = firebase.database().ref('users');
-        userRef.child(user.uid).once('value')
-        .then(function(snapshot) {
-          const userData = snapshot.val();
-
-          const userElement = document.querySelector('.user-details');
-          userElement.innerHTML = `
-            <h2>${userData.displayName}</h2>
-            <p>${userData.phoneNumber}</p>
-          `;
-
-          const eventsRef = firebase.database().ref('events');
-          eventsRef.once('value')
-          .then(function(snapshot) {
-            const eventsData = snapshot.val();
-
-            if (!eventsData) return;
-
-            const userEvents = userData.events;
-            const events = Object.keys(eventsData).map(key => {
-              return {
-                id: key,
-                ...eventsData[key]
-              }
-            });
-
-            const userEventsData = events.filter(event => {
-              return userEvents[event.id];
-            });
-
-            const container = document.querySelector('[data-user-events-list]');
-
-            for (data in userEventsData) {
-              renderEvent(container, userEventsData[data], currentPage);
-            }
-
-            const removeRSVPButtons = document.querySelectorAll('[data-delete-event]');
-            removeRSVPButtons.forEach(button => {
-              button.addEventListener('click', function(event) {
-                event.preventDefault();
-
-                console.log('Remove RSVP button clicked');
-
-                const eventId = event.target.getAttribute('id');
-
-                const user = firebase.auth().currentUser;
-                const usersRef = firebase.database().ref('users');
-                usersRef.child(user.uid).child('events').child(eventId).remove()
-                .then(() => {
-                  console.log('User event removed from database');
-
-                  // Remove user from event
-                  const eventsRef = firebase.database().ref('events');
-                  eventsRef.child(eventId).child('users').child(user.uid).remove()
-                  .then(() => {
-                    console.log('User removed from event');
-                    window.location.reload();
-                  })
-                })
-                .catch(function(error) {
-                  console.log(error);
-                });
-              })
-            });
-          })
-        })
-      }
-
       if (currentPage === '/create.html') {
 
         // Create event
@@ -444,43 +411,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
 
-      // Retrieve the user data from the database
-      const usersRef = firebase.database().ref('users');
-      usersRef.child(user.uid).once('value')
-      .then(function(snapshot) {
-        const isAdmin = snapshot.val().isAdmin;
-
-        if (isAdmin) {
-          console.log('Current user is an admin');
-
-          if (createButton) {
-            createButton.style.display = 'block';
-          }
-        } else {
-          console.log('Current user is not an admin');
-        }
-      })
-      .catch(function(error) {
-        console.log(error);
-      });
-
-      // show logout button
-      if (logoutButton) {
-        logoutButton.style.display = 'block';
-      }
-
-      // Hide login button
-      if (loginButton) {
-        loginButton.style.display = 'none';
-      }
-
-      // Hide signup button
-      if (registerButton) {
-        registerButton.style.display = 'none';
-      }
     } else {
       currentUser = null;
       console.log('No user is signed in.');
+      updateHeaderNav(user);
     }
   });
 
@@ -518,6 +452,42 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 });
+
+function loadUserPageDetails(currentUser) {
+  console.log('Loading user page details');
+
+  // Fetch user details from database or local data
+
+  console.log(this.users);
+
+  // Find user in users array
+  const user = this.users.find(user => user.id === currentUser.uid);
+
+  const userElement = document.querySelector('.user-details');
+  userElement.innerHTML = `
+    <h2>${user.name ? user.name : 'User'}</h2>
+    <p>${user.phoneNumber}</p>
+  `;
+
+  // Events are getting displayed through the loadApp function
+  // We need to add event listeners to the remove RSVP buttons
+}
+
+function updateHeaderNav(user) {
+  // Updates nav links based on whether user is logged in or not
+
+  if (logoutButton) {
+    logoutButton.style.display = user ? 'block' : 'none';
+  }
+
+  if (loginButton) {
+    loginButton.style.display = user ? 'none' : 'block';
+  }
+
+  if (registerButton) {
+    registerButton.style.display = user ? 'none' : 'block';
+  }
+}
 
 function handleEventClick(event) {
   event.preventDefault();
