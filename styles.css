@@ -39,6 +39,10 @@ a:hover {
   position: relative;
 }
 
+.event-link:hover {
+  text-decoration: none;
+}
+
 .user-details {
   padding: 10px;
 }
@@ -55,6 +59,7 @@ a:hover {
   border-radius: 5px;
   padding: 10px;
   cursor: pointer;
+  pointer-events: all;
 }
 
 .delete-btn {

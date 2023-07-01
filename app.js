@@ -118,6 +118,10 @@ function renderEventsToPage(event) {
   const eventWrapper = document.createElement('div');
   eventWrapper.classList.add('event');
 
+  const link = document.createElement('a');
+  link.classList.add('event-link');
+  link.href = `/event.html?id=${event.id}`;
+
   eventWrapper.innerHTML = `
     <h3 class="title">${event.name.toUpperCase()}</h3>
     <p>Cost: ${event.cost}</p>
@@ -129,8 +133,10 @@ function renderEventsToPage(event) {
     ${event.hostId === currentUser.uid ? '<button class="host-badge">HOST</button>' : ''}
   `;
 
+  link.appendChild(eventWrapper);
+
   const container = document.getElementById('main');
-  container.appendChild(eventWrapper);
+  container.appendChild(link);
 }
 
 function displayUserEvents(events) {
@@ -493,9 +499,9 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 
   if (currentPage === '/event.html') {
-    const eventId = parseInt(new URLSearchParams(window.location.search).get('id'), 10);
-    const eventData = retrieveEventData(eventId, events);
-    displayEventDetails(eventData);
+    // const eventId = parseInt(new URLSearchParams(window.location.search).get('id'), 10);
+    // const eventData = retrieveEventData(eventId, events);
+    // displayEventDetails(eventData);
   }
 
   const userPageButton = document.querySelector('[data-user-page-button]');
