@@ -385,6 +385,7 @@ async function loadApp() {
 
 loadApp();
 
+// TODO: Refactor this function
 function renderEvent(container, event, currentPage) {
   const link = document.createElement('a');
   link.href = `event.html?id=${event.id}`;
@@ -413,11 +414,13 @@ function renderEvent(container, event, currentPage) {
   container.appendChild(div);
 }
 
+// TODO: Refactor this function
 function retrieveEventData(eventId, events) {
   const eventData = events.find(event => event.id === eventId);
   return eventData;
 }
 
+// TODO: Refactor this function
 function displayEventDetails(eventData) {
   const eventDetailsElement = document.getElementById('event-details');
   eventDetailsElement.innerHTML = `
@@ -432,6 +435,7 @@ let currentUser;
 
 const currentPage = window.location.pathname;
 
+// TODO: Refactor this function
 document.addEventListener('DOMContentLoaded', function() {
   firebase.auth().onAuthStateChanged(function(user) {
     if (user) {
@@ -540,7 +544,6 @@ function loadUserPageDetails(currentUser) {
   `;
 
   // Events are getting displayed through the loadApp function
-  // We need to add event listeners to the remove RSVP buttons
 }
 
 function updateHeaderNav(user) {
@@ -566,6 +569,8 @@ function handleEventClick(event) {
 
   window.location.href = `event.html?id=${eventId}`;
 }
+
+// TODO: Refactor these functions
 
 const logoutButton = document.querySelector('[data-logout-button]');
 const registerForm = document.querySelector('.register-form');
