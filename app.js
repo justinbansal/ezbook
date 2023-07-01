@@ -33,7 +33,7 @@ async function submitLoginForm() {
 
   try {
     await login(phoneNumber);
-    window.location.href = '/';
+    navigateTo('/home');
   } catch (error) {
     console.log(error);
   }
@@ -330,6 +330,7 @@ function listenForDBChanges() {
 }
 
 async function loadApp() {
+  console.log('Loading app...');
   let events = [];
   let currentUser;
 
@@ -390,6 +391,34 @@ async function loadApp() {
 }
 
 loadApp();
+
+function handleRoute(route) {
+  // Handle route changes
+
+  if (route === '/home') {
+    // Display events on the page
+    loadApp();
+  } else if (route === '/user') {
+    // Display user's details and events
+  } else if (route === '/event') {
+    // Display event details
+  }
+}
+
+// Used to change the url and call the handleRoute function
+function navigateTo(route) {
+  // Navigate to route
+  window.history.pushState({}, route, route); // Read upon window.history.pushState()
+  handleRoute(route);
+}
+
+// Catch when user clicks back or forward buttons
+window.addEventListener('popstate', () => { // Read up on popstate
+  handleRoute(window.location.pathname);
+});
+
+// Initialize route handling
+handleRoute(window.location.pathname);
 
 // TODO: Refactor this function
 function renderEvent(container, event, currentPage) {
@@ -486,7 +515,7 @@ document.addEventListener('DOMContentLoaded', function() {
               ...event,
             };
 
-            window.location.href = '/';
+            navigateTo('/home');
           });
         }
       }
@@ -513,10 +542,10 @@ document.addEventListener('DOMContentLoaded', function() {
       // if user is logged in, redirect to user page
       const user = firebase.auth().currentUser;
       if (user) {
-        window.location.href = '/user.html';
+        navigateTo('/user');
       } else {
         window.localStorage.setItem('loginMessage', 'Please login to view your user page');
-        window.location.href = '/login.html';
+        navigateTo('/login');
       }
     });
   }
@@ -573,7 +602,7 @@ function handleEventClick(event) {
 
   const eventId = event.target.getAttribute('href').split('?id=')[1];
 
-  window.location.href = `event.html?id=${eventId}`;
+  navigateTo(`/event?id=${eventId}`);
 }
 
 // TODO: Refactor these functions
@@ -592,7 +621,7 @@ logoutButton.addEventListener('click', function(event) {
 
   firebase.auth().signOut().then(function() {
     console.log('Signed Out');
-    window.location.href = '/';
+    navigateTo('/home');
   }, function(error) {
     console.error('Sign Out Error', error);
   });
@@ -627,7 +656,7 @@ if (registerForm) {
       })
       .then(() => {
         console.log('User saved to database');
-        window.location.href = '/';
+        navigateTo('/home');
       })
     })
     .catch(function(error) {
