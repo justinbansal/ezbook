@@ -177,6 +177,11 @@ function displayOtherEvents(events) {
     // Render event to page
     renderEventsToPage(event);
   });
+
+  if (eventsUserHasNotJoined.length === 0) {
+    const container = document.getElementById('main');
+    container.innerHTML = '<h3>You are registered for all of the upcoming events!</h3>';
+  }
 }
 
 function displayEvents(events) {
@@ -184,17 +189,24 @@ function displayEvents(events) {
 
   const currentPage = window.location.pathname;
 
+  // Clear out the main container
+  const container = document.getElementById('main');
+  container.innerHTML = '';
+
   if (currentPage === '/user.html') {
     displayUserEvents(events);
   } else {
     displayOtherEvents(events);
   }
 
-  // Add event listeners to buttons
-  setupButtonListeners(events);
+  // Add event listeners to join buttons
+  setupJoinButtonListeners(events);
+
+  // Add event listeners to remove RSVP buttons
+  setupRemoveRSVPButtonListeners(events);
 }
 
-function setupButtonListeners(events) {
+function setupJoinButtonListeners(events) {
   // Add event listeners to buttons
   const joinEventButtons = document.querySelectorAll('[data-join-event]');
 
@@ -223,7 +235,7 @@ function setupButtonListeners(events) {
       );
 
       // Find user in users array
-      const user = users.find(user => user.id === currentUser.uid);
+      const user = this.users.find(user => user.id === currentUser.uid);
       if (!user.events) {
         user.events = [];
       }
@@ -241,6 +253,40 @@ function setupButtonListeners(events) {
   });
 }
 
+function setupRemoveRSVPButtonListeners(events) {
+  // Add event listeners to buttons
+  const removeRSVPButtons = document.querySelectorAll('[data-delete-event]');
+  removeRSVPButtons.forEach(button => {
+    button.addEventListener('click', event => {
+      event.preventDefault();
+
+      const eventToRemove = events.find(event => event.id === button.id);
+
+      events[events.indexOf(eventToRemove)].users.pop(
+        {
+          id: currentUser.uid,
+          name: currentUser.displayName,
+          phoneNumber: currentUser.phoneNumber
+        }
+      );
+
+      // Find user in users array
+      const user = this.users.find(user => user.id === currentUser.uid);
+
+      user.events.pop(
+        {
+          id: eventToRemove.id,
+          name: eventToRemove.name,
+        }
+      );
+
+      // Update database
+      updateDatabase(events, this.users);
+    })
+  });
+
+}
+
 async function updateDatabase(events, users) {
   // Update database with new events and users
   const eventsRef = firebase.database().ref('events');
@@ -254,6 +300,27 @@ async function updateDatabase(events, users) {
   catch (error) {
     console.log(error);
   }
+}
+
+function listenForDBChanges() {
+  // Listen for changes to database
+  // Update app when changes occur
+
+  const eventsRef = firebase.database().ref('events');
+  const usersRef = firebase.database().ref('users');
+
+  eventsRef.on('value', snapshot => {
+    const events = snapshot.val();
+    displayEvents(events);
+
+    // TODO: Have events in a local variable as well that we can update
+    // whenever we fetch from the database
+  });
+
+  usersRef.on('value', snapshot => {
+    const users = snapshot.val();
+    this.users = users;
+  });
 }
 
 async function loadApp() {
@@ -309,8 +376,11 @@ async function loadApp() {
 
   if (currentPage === '/user.html') {
     loadUserPageDetails(currentUser);
-    updateHeaderNav(currentUser);
   }
+
+  updateHeaderNav(currentUser);
+
+  listenForDBChanges();
 }
 
 loadApp();
