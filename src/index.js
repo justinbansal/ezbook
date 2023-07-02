@@ -1,3 +1,5 @@
+import './styles.css';
+
 // Firebase initialization
 // TODO: Sensitive information should be stored in a .env file and accessed through process.env
 const firebaseConfig = {
@@ -389,8 +391,6 @@ async function loadApp() {
 
   listenForDBChanges();
 }
-
-loadApp();
 
 function handleRoute(route) {
   // Handle route changes
