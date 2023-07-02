@@ -26,6 +26,7 @@ function initializeRecaptchaVerifier() {
 
 // Global variables
 let globalConfirmationResult;
+let events = [];
 
 // Submits login form and calls login function with phone number
 async function submitLoginForm() {
@@ -338,7 +339,6 @@ function listenForDBChanges() {
 
 async function loadApp() {
   console.log('Loading app...');
-  let events = [];
   let currentUser;
 
   this.users = [];
@@ -414,7 +414,57 @@ function handleRoute(route) {
 
     const eventId = route.split('/event/')[1];
     console.log(eventId);
+
+    // Clear main container
+    const container = document.getElementById('main');
+    container.innerHTML = '';
+
+    // Display event details
+    // Find event in events array
+    const event = events.find(event => event.id === eventId);
+    console.log(event);
+
+    // Display event details
+    displayEventDetails(event);
+
+    // Display users attending event
+    // Find users in event object
+    if (event.users) {
+      displayUsers(event.users);
+    }
+
+
+    // Display event location on map
+    // Might need to use Google Maps API
+    loadMap(event.location);
+
   }
+}
+
+function loadMap(address) {
+  // Load map
+  const map = L.map('map', { zoom: 13 });
+
+  // Add a tile layer to display the map
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+  }).addTo(map);
+
+  // Geocode the address to get coordinates
+  const geocoder = L.Control.Geocoder.nominatim();
+  geocoder.geocode(address, (results) => {
+    if (results && results.length > 0) {
+      const { lat, lng } = results[0].center;
+
+      // Center map on coordinates
+      map.setView([lat, lng]);
+
+      // Add marker to map
+      L.marker([lat, lng]).addTo(map);
+    } else {
+      console.log('Address not found');
+    }
+  });
 }
 
 // Used to change the url and call the handleRoute function
@@ -469,13 +519,33 @@ function retrieveEventData(eventId, events) {
 
 // TODO: Refactor this function
 function displayEventDetails(eventData) {
-  const eventDetailsElement = document.getElementById('event-details');
+  const eventDetailsElement = document.getElementById('main');
   eventDetailsElement.innerHTML = `
-    <h2>${eventData.title}</h2>
-    <p>${eventData.description}</p>
+    <h2>${eventData.name}</h2>
+    <p>${eventData.cost}</p>
     <p>${eventData.date} ${eventData.time}</p>
     <p>${eventData.location}</p>
+
+    <h3>Users attending</h3>
+    <div id="users"></div>
+
+    <h3>Location</h3>
+    <div id="map"></div>
   `;
+}
+
+function displayUsers(users) {
+  const usersElement = document.getElementById('users');
+  usersElement.innerHTML = '';
+  users.forEach(user => {
+    const userElement = document.createElement('div');
+    userElement.classList.add('user');
+    userElement.innerHTML = `
+      <p>${user.name}</p>
+      <p>${user.phoneNumber}</p>
+    `;
+    usersElement.appendChild(userElement);
+  });
 }
 
 let currentUser;

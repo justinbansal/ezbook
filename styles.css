@@ -81,3 +81,7 @@ a:hover {
   border-radius: 5px;
   border-color: darkcyan;
 }
+
+#map {
+  height: 400px;
+}
