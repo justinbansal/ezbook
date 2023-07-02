@@ -233,6 +233,7 @@ function setupJoinButtonListeners(events) {
   joinEventButtons.forEach(button => {
     button.addEventListener('click', event => {
       event.preventDefault();
+      event.stopPropagation();
 
       const eventToJoin = events.find(event => event.id === button.id);
 
@@ -273,6 +274,7 @@ function setupRemoveRSVPButtonListeners(events) {
   removeRSVPButtons.forEach(button => {
     button.addEventListener('click', event => {
       event.preventDefault();
+      event.stopPropagation();
 
       const eventToRemove = events.find(event => event.id === button.id);
 
