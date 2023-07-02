@@ -33,7 +33,7 @@ async function submitLoginForm() {
 
   try {
     await login(phoneNumber);
-    navigateTo('/home');
+    navigateTo('/');
   } catch (error) {
     console.log(error);
   }
@@ -120,7 +120,14 @@ function renderEventsToPage(event) {
 
   const link = document.createElement('a');
   link.classList.add('event-link');
-  link.href = `/event.html?id=${event.id}`;
+  link.href = '#';
+  link.id = event.id;
+
+  link.addEventListener('click', event => {
+    event.preventDefault();
+
+    navigateTo(`/event/${event.currentTarget.id}`);
+  });
 
   eventWrapper.innerHTML = `
     <h3 class="title">${event.name.toUpperCase()}</h3>
@@ -128,8 +135,8 @@ function renderEventsToPage(event) {
     <p>Limit: ${event.limit}</p>
     <p>${event.date.toUpperCase()} ${event.time.toUpperCase()}</p>
     <p>IN ${event.location.toUpperCase()}</p>
-    ${currentPage != '/user.html' ? `<button class="join-btn" id="${event.id}" data-join-event>Join</button>` : ''}
-    ${currentPage === '/user.html' ? `<button class="delete-btn" id="${event.id}" data-delete-event>Remove RSVP</button>` : ''}
+    ${currentPage != '/user' ? `<button class="join-btn" id="${event.id}" data-join-event>Join</button>` : ''}
+    ${currentPage === '/user' ? `<button class="delete-btn" id="${event.id}" data-delete-event>Remove RSVP</button>` : ''}
     ${event.hostId === currentUser.uid ? '<button class="host-badge">HOST</button>' : ''}
   `;
 
@@ -199,7 +206,7 @@ function displayEvents(events) {
   const container = document.getElementById('main');
   container.innerHTML = '';
 
-  if (currentPage === '/user.html') {
+  if (currentPage === '/user') {
     displayUserEvents(events);
   } else {
     displayOtherEvents(events);
@@ -381,7 +388,7 @@ async function loadApp() {
 
   const currentPage = window.location.pathname;
 
-  if (currentPage === '/user.html') {
+  if (currentPage === '/user') {
     loadUserPageDetails(currentUser);
   }
 
@@ -390,18 +397,23 @@ async function loadApp() {
   listenForDBChanges();
 }
 
-loadApp();
-
 function handleRoute(route) {
   // Handle route changes
 
-  if (route === '/home') {
+  if (route === '/') {
     // Display events on the page
     loadApp();
   } else if (route === '/user') {
+    console.log('User page');
     // Display user's details and events
-  } else if (route === '/event') {
-    // Display event details
+    loadApp();
+
+    // Clicking on an event should take you to the event page
+  } else if (route.startsWith('/event/')) {
+    console.log('Event page');
+
+    const eventId = route.split('/event/')[1];
+    console.log(eventId);
   }
 }
 
@@ -423,7 +435,7 @@ handleRoute(window.location.pathname);
 // TODO: Refactor this function
 function renderEvent(container, event, currentPage) {
   const link = document.createElement('a');
-  link.href = `event.html?id=${event.id}`;
+  link.href = `event?id=${event.id}`;
 
   const div = document.createElement('div');
   div.classList.add('event');
@@ -441,8 +453,8 @@ function renderEvent(container, event, currentPage) {
     <p>Limit: ${event.limit}</p>
     <p>${event.date.toUpperCase()} ${event.time.toUpperCase()}</p>
     <p>IN ${event.location.toUpperCase()}</p>
-    ${currentPage != '/user.html' ? `<button class="join-btn" id="${event.id}" data-join-event>Join</button>` : ''}
-    ${currentPage === '/user.html' ? `<button class="delete-btn" id="${event.id}" data-delete-event>Remove RSVP</button>` : ''}
+    ${currentPage != '/user' ? `<button class="join-btn" id="${event.id}" data-join-event>Join</button>` : ''}
+    ${currentPage === '/user' ? `<button class="delete-btn" id="${event.id}" data-delete-event>Remove RSVP</button>` : ''}
     ${hosted ? '<button class="host-badge">HOST</button>' : ''}
   `;
   // link.appendChild(div);
@@ -479,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
       const currentPage = window.location.pathname;
 
-      if (currentPage === '/create.html') {
+      if (currentPage === '/create') {
 
         // Create event
         if (createEventForm) {
@@ -515,7 +527,7 @@ document.addEventListener('DOMContentLoaded', function() {
               ...event,
             };
 
-            navigateTo('/home');
+            navigateTo('/');
           });
         }
       }
@@ -527,30 +539,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  if (currentPage === '/event.html') {
+  if (currentPage === '/event') {
     // const eventId = parseInt(new URLSearchParams(window.location.search).get('id'), 10);
     // const eventData = retrieveEventData(eventId, events);
     // displayEventDetails(eventData);
   }
 
-  const userPageButton = document.querySelector('[data-user-page-button]');
+  // const userPageButton = document.querySelector('[data-user-page-button]');
 
-  if (userPageButton) {
-    userPageButton.addEventListener('click', function(event) {
-      event.preventDefault();
+  // if (userPageButton) {
+  //   userPageButton.addEventListener('click', function(event) {
+  //     event.preventDefault();
 
-      // if user is logged in, redirect to user page
-      const user = firebase.auth().currentUser;
-      if (user) {
-        navigateTo('/user');
-      } else {
-        window.localStorage.setItem('loginMessage', 'Please login to view your user page');
-        navigateTo('/login');
-      }
-    });
-  }
+  //     // if user is logged in, redirect to user page
+  //     const user = firebase.auth().currentUser;
+  //     if (user) {
+  //       navigateTo('/user');
+  //     } else {
+  //       window.localStorage.setItem('loginMessage', 'Please login to view your user page');
+  //       navigateTo('/login');
+  //     }
+  //   });
+  // }
 
-  if (currentPage === '/login.html') {
+  if (currentPage === '/login') {
     const messageDiv = document.querySelector('[data-message-output]');
     const loginMessage = window.localStorage.getItem('loginMessage');
 
@@ -621,7 +633,7 @@ logoutButton.addEventListener('click', function(event) {
 
   firebase.auth().signOut().then(function() {
     console.log('Signed Out');
-    navigateTo('/home');
+    navigateTo('/');
   }, function(error) {
     console.error('Sign Out Error', error);
   });
@@ -656,7 +668,7 @@ if (registerForm) {
       })
       .then(() => {
         console.log('User saved to database');
-        navigateTo('/home');
+        navigateTo('/');
       })
     })
     .catch(function(error) {
